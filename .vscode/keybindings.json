@@ -1,0 +1,12 @@
+[
+  {
+    "key": "cmd+k cmd+0",
+    "command": "editor.unfoldAll",
+    "when": "editorTextFocus"
+  },
+  {
+    "key": "cmd+shift+]",
+    "command": "editor.unfoldAll",
+    "when": "editorTextFocus"
+  }
+]

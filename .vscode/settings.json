@@ -3,5 +3,40 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "tailwindCSS.experimental.classRegex": [
+    ["tva\\((([^()]*|\\([^()]*\\))*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
+  ],
+  "editor.wordWrap": "on",
+  "editor.foldingStrategy": "indentation",
+  "editor.showFoldingControls": "never",
+  "editor.folding": false,
+  "editor.foldingMaximumRegions": 0,
+  "editor.foldingImportsByDefault": false,
+  "typescript.preferences.includePackageJsonAutoImports": "off",
+  "javascript.preferences.includePackageJsonAutoImports": "off",
+  "[javascript]": {
+    "editor.folding": false
+  },
+  "[javascriptreact]": {
+    "editor.folding": false
+  },
+  "[typescript]": {
+    "editor.folding": false
+  },
+  "[typescriptreact]": {
+    "editor.folding": false
+  },
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact"
+  },
+  "inlineFold.autoFold": false,
+  "inlineFold.supportedLanguages": [],
+  "inlineFold.unfoldedOpacity": 1,
+  "inlineFold.maskChar": "",
+  "inlineFold.maskColor": "",
+  "inlineFold.after": "",
+  "inlineFold.regex": "",
+  "inlineFold.regexFlags": "",
+  "inlineFold.regexGroup": 0
 }

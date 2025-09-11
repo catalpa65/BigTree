@@ -1,29 +1,85 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from "@react-navigation/native";
+import { useFonts } from "expo-font";
+import { Stack, useRouter, useSegments } from "expo-router";
+import "react-native-reanimated";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { StatusBar } from "react-native";
+
+import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
+import { Spinner } from "@/components/ui/spinner";
+import { View } from "@/components/ui/view";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import "@/global.css";
+import { useEffect } from "react";
+
+function AppNavigator() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (isLoading) return; // 等待加载完成
+
+    const inTabsGroup = segments[0] === "(tabs)";
+
+    if (!isAuthenticated && inTabsGroup) {
+      // 用户未登录但在主应用中，重定向到登录页
+      router.replace("/login");
+    } else if (isAuthenticated && !inTabsGroup) {
+      // 用户已登录但不在主应用中，重定向到主应用
+      router.replace("/(tabs)");
+    }
+  }, [isAuthenticated, isLoading, segments, router]);
+
+  if (isLoading) {
+    // 显示加载中状态
+    return (
+      <View className="flex-1 justify-center items-center bg-background-0">
+        <Spinner size="large" />
+      </View>
+    );
+  }
+
+  return (
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="+not-found" />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   if (!loaded) {
     // Async font loading only occurs in development.
+    // 生产环境会预加载字体，不会有这个问题
     return null;
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <GluestackUIProvider mode="light">
+      <AuthProvider>
+        <ThemeProvider
+          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+        >
+          {/* Expo Router 路由配置 */}
+          <AppNavigator />
+          {/* 控制状态栏样式的 */}
+          <StatusBar
+            barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
+          />
+        </ThemeProvider>
+      </AuthProvider>
+    </GluestackUIProvider>
   );
 }
