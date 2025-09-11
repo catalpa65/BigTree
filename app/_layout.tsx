@@ -25,14 +25,14 @@ function AppNavigator() {
   useEffect(() => {
     if (isLoading) return; // 等待加载完成
 
-    const inTabsGroup = segments[0] === "(tabs)";
+    const inAppGroup = segments[0] === "(app)";
 
-    if (!isAuthenticated && inTabsGroup) {
-      // 用户未登录但在主应用中，重定向到登录页
+    if (!isAuthenticated && inAppGroup) {
+      // 未登录但进入应用分组，跳到登录
       router.replace("/login");
-    } else if (isAuthenticated && !inTabsGroup) {
-      // 用户已登录但不在主应用中，重定向到主应用
-      router.replace("/(tabs)");
+    } else if (isAuthenticated && !inAppGroup) {
+      // 已登录但不在应用分组，跳到应用首页（tabs 的 index 对应 "/"）
+      router.replace("/");
     }
   }, [isAuthenticated, isLoading, segments, router]);
 
@@ -47,7 +47,7 @@ function AppNavigator() {
 
   return (
     <Stack>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(app)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>
