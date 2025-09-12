@@ -1,14 +1,19 @@
-# TODO
-
-- 接入后端NestJS API
-
-# EnglishTree
+# BigTree
 
 [![Expo SDK](https://img.shields.io/badge/Expo_SDK-53-000?logo=expo)](https://expo.dev) [![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://reactjs.org) [![React Native](https://img.shields.io/badge/React_Native-0.79-61dafb?logo=react)](https://reactnative.dev) [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178c6?logo=typescript)](https://www.typescriptlang.org) [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 一个用 Expo 构建的跨端 App（iOS/Android/Web），帮助你用极简方式进行「每日记录」与成长打卡。通过轻交互、可视化成长墙，让进步可见。
 
 ---
+
+## 预览
+
+<p align="center">
+  <img src="assets/images/readme/login.png" alt="登录页" width="260" />
+  <img src="assets/images/readme/home.png" alt="首页" width="260" />
+  <img src="assets/images/readme/user.png" alt="用户页" width="260" />
+  <img src="assets/images/readme/detail.png" alt="详情页" width="260" />
+</p>
 
 ## 功能速览
 
@@ -23,15 +28,6 @@
   - 退出登录。
 - **详情页**：查看某条记录的日期与内容。
 - **体验优化**：深浅色主题、Safe Area 适配、细节动效、触感反馈。
-
-## 预览
-
-<p align="center">
-  <img src="assets/images/readme/login.png" alt="登录页" width="260" />
-  <img src="assets/images/readme/home.png" alt="首页" width="260" />
-  <img src="assets/images/readme/user.png" alt="用户页" width="260" />
-  <img src="assets/images/readme/detail.png" alt="详情页" width="260" />
-</p>
 
 ## 项目结构
 
@@ -97,3 +93,7 @@ hooks/
 ## 许可证
 
 本项目采用 [MIT 许可证](LICENSE)。
+
+# TODO
+
+- 接入后端NestJS API
