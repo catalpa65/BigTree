@@ -16,5 +16,3 @@ packages/
 ├── utils/             # 工具函数
 └── constants/         # 常量定义
 ```
-
-每个包都应该有自己的 `package.json` 文件并遵循 `@english-tree/` 命名规范。

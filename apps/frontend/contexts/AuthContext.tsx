@@ -1,10 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { apiService } from "../services/api";
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   login: (phoneNumber: string, verificationCode: string) => Promise<boolean>;
+  sendVerificationCode: (phoneNumber: string) => Promise<boolean>;
   logout: () => Promise<void>;
   isLoading: boolean;
 }
@@ -48,29 +50,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     verificationCode: string
   ): Promise<boolean> => {
     try {
-      // 这里应该调用真实的API进行验证
-      // 暂时使用模拟验证：验证码为 "123456"
-      if (verificationCode === "123456") {
-        const userData: User = {
-          id: `user_${Date.now()}`,
-          phoneNumber,
-          name: "用户",
-        };
+      // 调用真实的API进行验证
+      const response = await apiService.login(phoneNumber, verificationCode);
 
-        const userToken = `token_${Date.now()}`;
+      if (response.success && response.data) {
+        const { token, user: userData } = response.data;
 
         // 保存到本地存储
-        await AsyncStorage.setItem("userToken", userToken);
+        await AsyncStorage.setItem("userToken", token);
         await AsyncStorage.setItem("userData", JSON.stringify(userData));
 
         setIsAuthenticated(true);
         setUser(userData);
         return true;
       } else {
+        console.error("登录失败:", response.error);
         return false;
       }
     } catch (error) {
       console.error("登录失败:", error);
+      return false;
+    }
+  };
+
+  const sendVerificationCode = async (
+    phoneNumber: string
+  ): Promise<boolean> => {
+    try {
+      const response = await apiService.sendVerificationCode(phoneNumber);
+      if (response.success) {
+        return true;
+      } else {
+        console.error("发送验证码失败:", response.error);
+        return false;
+      }
+    } catch (error) {
+      console.error("发送验证码失败:", error);
       return false;
     }
   };
@@ -92,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated,
     user,
     login,
+    sendVerificationCode,
     logout,
     isLoading,
   };

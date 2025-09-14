@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"pnpm run dev:backend\" \"pnpm run dev:frontend\"",
-    "dev:frontend": "cd apps/frontend && pnpm start",
-    "dev:backend": "cd apps/backend && pnpm run start:dev",
+    "dev:frontend": "cd apps/frontend && npx expo start",
+    "dev:backend": "cd apps/backend && pnpm run start:dev:swc",
     "build": "pnpm run build:backend && pnpm run build:frontend",
     "build:frontend": "cd apps/frontend && pnpm run build",
     "build:backend": "cd apps/backend && pnpm run build",
@@ -15,12 +15,21 @@
     "lint": "pnpm run lint:frontend && pnpm run lint:backend",
     "lint:frontend": "cd apps/frontend && pnpm run lint",
     "lint:backend": "cd apps/backend && pnpm run lint",
+    "clean": "pnpm run clean:deps && pnpm run clean:build",
+    "clean:deps": "rm -rf node_modules apps/*/node_modules",
+    "clean:build": "rm -rf apps/*/dist apps/*/build apps/*/.expo",
+    "clean:all": "pnpm run clean && rm -rf .pnpm-store",
     "install:all": "pnpm install && pnpm run install:frontend && pnpm run install:backend",
     "install:frontend": "cd apps/frontend && pnpm install",
-    "install:backend": "cd apps/backend && pnpm install"
+    "install:backend": "cd apps/backend && pnpm install",
+    "fresh:install": "pnpm run clean:deps && pnpm run install:all"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
   },
   "keywords": [
     "monorepo",

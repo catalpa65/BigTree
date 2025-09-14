@@ -33,25 +33,20 @@ export class PunchRecord {
 
   /**
    * 打卡时间
-   * type: 'datetime' 指定数据库中的字段类型为datetime
-   * 用于记录用户具体的打卡时间
+   * Postgres 不支持 'datetime'，使用 'timestamptz'（带时区的时间戳）
    */
-  @Column({ name: "punch_time", type: "datetime" })
+  @Column({ name: "punch_time", type: "timestamptz" })
   punchTime: Date;
 
   /**
    * 记录创建时间
-   * @CreateDateColumn 装饰器会在插入记录时自动设置当前时间
-   * 不需要手动赋值，TypeORM会自动处理
    */
-  @CreateDateColumn({ name: "create_time" })
+  @CreateDateColumn({ name: "create_time", type: "timestamptz" })
   createTime: Date;
 
   /**
    * 记录更新时间
-   * @UpdateDateColumn 装饰器会在更新记录时自动设置当前时间
-   * 每次修改这条记录时，这个字段都会自动更新
    */
-  @UpdateDateColumn({ name: "update_time" })
+  @UpdateDateColumn({ name: "update_time", type: "timestamptz" })
   updateTime: Date;
 }
