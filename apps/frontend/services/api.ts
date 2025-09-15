@@ -49,7 +49,7 @@ class ApiService {
   async sendVerificationCode(phoneNumber: string): Promise<ApiResponse> {
     return this.request(API_CONFIG.ENDPOINTS.AUTH.SEND_CODE, {
       method: "POST",
-      body: JSON.stringify({ phoneNumber }),
+      body: JSON.stringify({ phone: phoneNumber }), // 修复字段名：phoneNumber -> phone
     });
   }
 
@@ -59,7 +59,7 @@ class ApiService {
   ): Promise<ApiResponse<{ token: string; user: any }>> {
     return this.request(API_CONFIG.ENDPOINTS.AUTH.LOGIN, {
       method: "POST",
-      body: JSON.stringify({ phoneNumber, verificationCode }),
+      body: JSON.stringify({ phone: phoneNumber, verificationCode }), // 修复字段名：phoneNumber -> phone
     });
   }
 

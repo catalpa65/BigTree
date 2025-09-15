@@ -26,7 +26,7 @@ import Animated from "react-native-reanimated";
 */
 //useAuth登录实现仔细看一下
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, sendVerificationCode } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -53,8 +53,21 @@ export default function LoginScreen() {
       return;
     }
 
-    setCodeSent(true);
-    Alert.alert("验证码已发送", "请输入验证码：123456（测试用）");
+    setIsLoading(true);
+    try {
+      const success = await sendVerificationCode(phoneNumber);
+      if (success) {
+        setCodeSent(true);
+        Alert.alert("验证码已发送", "请查看控制台日志和检查数据库");
+      } else {
+        Alert.alert("发送失败", "发送验证码失败，请稍后重试");
+      }
+    } catch (error) {
+      console.error("发送验证码异常:", error);
+      Alert.alert("发送失败", "网络异常，请稍后重试");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLogin = async () => {

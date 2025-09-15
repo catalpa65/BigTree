@@ -65,9 +65,10 @@ export class UserService {
     // TODO: 这里应该生成JWT token
     return {
       message: "登录成功",
+      token: `temp_token_${user.id}_${Date.now()}`, // 临时token，后续需要实现JWT
       user: {
-        id: user.id,
-        phone: user.phone,
+        id: user.id.toString(), // 转换为字符串类型
+        phoneNumber: user.phone, // 修复字段名：phone -> phoneNumber
       },
     };
   }
