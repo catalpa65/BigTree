@@ -35,24 +35,6 @@
 - **后端**：NestJS 11、TypeORM、PostgreSQL、class-validator
 - **工具链**：pnpm、Monorepo、ESLint/Prettier
 
-## 环境要求
-
-- Node >= 20（推荐使用 nvm 管理版本）
-- pnpm >= 9
-- PostgreSQL（本地或云服务）
-
-## 环境准备（nvm）
-
-```bash
-# 读取项目根目录的 .nvmrc（已设定为 20）
-nvm install
-nvm use
-
-# 可选：查看版本
-node -v
-pnpm -v
-```
-
 ## 关键实现
 
 - **认证与路由守卫**：`AuthContext` + `AsyncStorage` 持久化；`app/_layout.tsx` 基于 `useSegments()` 与 `useRouter()` 进行登录态重定向。
@@ -112,9 +94,9 @@ EnglishTree/
 
 ## 路线图
 
-- 云端同步，支持（iOS/Android/Web/Wechat）
-- 后台运营管理系统
-- 真实的需求
+- 多端同步（IOS/Android/Web/WeChat APP）
+- 运营管理后台(权限、可视化)
+- 实际的场景需求
 
 ## 许可证
 
@@ -123,5 +105,8 @@ EnglishTree/
 ## TODO
 
 - 引入状态管理，处理不同页面数据同步问题（Redux）
-- 默认进入首页，然后按需进入登录页
-- 验证码接入、上线合规性
+- 默认进入首页，按需进入登录页
+- 验证码接入、上线合规性了解(隐私政策，用户协议)
+
+- 三方登录
+- 并发与分布式支持
