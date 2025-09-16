@@ -7,6 +7,7 @@ import React from "react";
 import { View } from "react-native";
 
 export type NoteItem = {
+  id?: number; // 可选，用于后端数据
   date: Date;
   excerpt: string;
 };

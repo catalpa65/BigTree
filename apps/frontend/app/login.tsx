@@ -29,7 +29,8 @@ export default function LoginScreen() {
   const { login, sendVerificationCode } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // 登录状态
+  const [isSendingCode, setIsSendingCode] = useState(false); // 发送验证码状态
   const [codeSent, setCodeSent] = useState(false);
 
   // 使用动画Hook
@@ -53,12 +54,12 @@ export default function LoginScreen() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSendingCode(true); // 使用独立的发送验证码状态
     try {
       const success = await sendVerificationCode(phoneNumber);
       if (success) {
         setCodeSent(true);
-        Alert.alert("验证码已发送", "请查看控制台日志和检查数据库");
+        Alert.alert("验证码已发送");
       } else {
         Alert.alert("发送失败", "发送验证码失败，请稍后重试");
       }
@@ -66,7 +67,7 @@ export default function LoginScreen() {
       console.error("发送验证码异常:", error);
       Alert.alert("发送失败", "网络异常，请稍后重试");
     } finally {
-      setIsLoading(false);
+      setIsSendingCode(false);
     }
   };
 
@@ -183,10 +184,13 @@ export default function LoginScreen() {
                   size="lg"
                   className="px-4 h-12 min-w-24"
                   onPress={handleSendCode}
-                  isDisabled={isLoading}
                 >
                   <ButtonText className="text-sm font-medium">
-                    {codeSent ? "重新发送" : "获取验证码"}
+                    {isSendingCode
+                      ? "发送中..."
+                      : codeSent
+                      ? "重新发送"
+                      : "获取验证码"}
                   </ButtonText>
                 </Button>
               </View>
@@ -198,7 +202,6 @@ export default function LoginScreen() {
                   size="lg"
                   className="w-full h-14 rounded-xl bg-typography-900"
                   onPress={handleLogin}
-                  isDisabled={isLoading}
                 >
                   <ButtonText className="text-lg font-semibold text-white">
                     {isLoading ? "登录中..." : "登录"}

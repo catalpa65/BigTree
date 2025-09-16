@@ -4,8 +4,12 @@ import { Textarea, TextareaInput } from "@/components/ui/textarea";
 import { View } from "@/components/ui/view";
 import { VStack } from "@/components/ui/vstack";
 import { getRandomQuote } from "@/constants/quotes";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiService } from "@/services/api";
+import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Keyboard,
   Platform,
   Pressable,
@@ -27,13 +31,17 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Index() {
+  const { user } = useAuth(); // 获取用户认证信息
+
   const [inputText, setInputText] = useState("");
   const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [isPunching, setIsPunching] = useState(false); // 打卡API调用状态
   const [showSaveIndicator, setShowSaveIndicator] = useState(false); // 仅在有编辑/保存时显示
   const [isEditing, setIsEditing] = useState(false); // 是否正在编辑
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle"
   );
+  const [isLoadingTodayNote, setIsLoadingTodayNote] = useState(false); // 加载今日笔记状态
   // const [isFocused, setIsFocused] = useState(false); // 是否已聚焦
 
   // 句库（常量），随机展示
@@ -63,25 +71,60 @@ export default function Index() {
   }, [scale]);
 
   // 打卡功能
-  const handleCheckIn = useCallback(() => {
-    // 成功动画序列
-    scale.value = withSequence(
-      withSpring(1.1, { damping: 10, stiffness: 300 }),
-      withSpring(1, { damping: 15, stiffness: 200 })
-    );
+  const handleCheckIn = useCallback(async () => {
+    if (isPunching) return; // 防止重复点击
 
-    // 颜色变化动画
-    colorProgress.value = withTiming(isCheckedIn ? 0 : 1, {
-      duration: 400,
-      easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
-    });
+    if (!user?.id) {
+      Alert.alert("错误", "请先登录");
+      return;
+    }
 
-    // 已移除扫光效果
+    if (isCheckedIn) {
+      Alert.alert("提示", "今天已经打过卡了");
+      return;
+    }
 
-    // 更新状态
-    const newStatus = !isCheckedIn;
-    runOnJS(setIsCheckedIn)(newStatus);
-  }, [isCheckedIn, scale, colorProgress]);
+    setIsPunching(true);
+
+    try {
+      // 调用后端打卡接口
+      const userId = parseInt(user.id);
+      if (isNaN(userId)) {
+        Alert.alert("错误", "用户ID无效，请重新登录");
+        return;
+      }
+
+      const response = await apiService.createPunchRecord({
+        userId, // 转换为number类型
+      });
+
+      if (response.success) {
+        // API调用成功，执行动画
+        scale.value = withSequence(
+          withSpring(1.1, { damping: 10, stiffness: 300 }),
+          withSpring(1, { damping: 15, stiffness: 200 })
+        );
+
+        colorProgress.value = withTiming(1, {
+          duration: 400,
+          easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+        });
+
+        // 更新状态为已打卡
+        runOnJS(setIsCheckedIn)(true);
+
+        // 显示成功提示
+        Alert.alert("成功", response.data?.message || "打卡成功！");
+      } else {
+        // API调用失败
+        Alert.alert("打卡失败", response.error || "请稍后重试");
+      }
+    } catch (error) {
+      Alert.alert("打卡失败", "网络异常，请稍后重试");
+    } finally {
+      setIsPunching(false);
+    }
+  }, [user, isPunching, isCheckedIn, scale, colorProgress]);
 
   // 呼吸动画（更明显但不打扰）
   useEffect(() => {
@@ -101,6 +144,94 @@ export default function Index() {
     );
   }, [breath]);
 
+  // 检查今日打卡状态
+  useEffect(() => {
+    checkTodayPunchStatus();
+  }, [checkTodayPunchStatus, colorProgress]);
+
+  // 加载今日笔记的函数
+  const loadTodayNote = useCallback(async () => {
+    if (!user?.id) {
+      console.log("用户ID不存在，跳过加载今日笔记");
+      return;
+    }
+
+    // 检查用户ID是否有效
+    const userId = parseInt(user.id);
+    if (isNaN(userId)) {
+      console.error("用户ID格式无效:", user.id);
+      Alert.alert("用户数据异常", "请重新登录后再试");
+      return;
+    }
+
+    try {
+      setIsLoadingTodayNote(true);
+      console.log("正在加载用户", user.id, "的今日笔记");
+      // 统一使用字符串ID调用API
+      const response = await apiService.getTodayNote(user.id);
+
+      if (response.success && response.data) {
+        // 回显今天的笔记内容
+        setInputText(response.data.note || "");
+        console.log("加载今日笔记成功:", response.data);
+      } else {
+        // 今天没有笔记，保持空白
+        setInputText("");
+        console.log("今日暂无笔记");
+      }
+    } catch (error) {
+      console.error("加载今日笔记失败，用户ID:", user.id, "错误:", error);
+      // 对于新用户，不显示错误提示，只是保持空白状态
+      setInputText("");
+    } finally {
+      setIsLoadingTodayNote(false);
+    }
+  }, [user?.id]);
+
+  // 检查今日打卡状态的函数
+  const checkTodayPunchStatus = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const response = await apiService.getPunchRecordsByUser(user.id);
+      if (response.success && response.data) {
+        // 检查今天是否已经打卡
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const todayRecord = response.data.find((record: any) => {
+          const punchTime = new Date(record.punchTime);
+          return punchTime >= today && punchTime < tomorrow;
+        });
+
+        if (todayRecord) {
+          setIsCheckedIn(true);
+          // 设置按钮颜色为已打卡状态
+          colorProgress.value = 1;
+        }
+      }
+    } catch (error) {
+      console.error("检查打卡状态失败:", error);
+    }
+  }, [user?.id, colorProgress]);
+
+  // 获取今日笔记并回显
+  useEffect(() => {
+    loadTodayNote();
+  }, [loadTodayNote]);
+
+  // Tab获得焦点时刷新数据
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        loadTodayNote();
+        checkTodayPunchStatus();
+      }
+    }, [user?.id, loadTodayNote, checkTodayPunchStatus])
+  );
+
   // 处理文本输入变化
   const handleTextChange = useCallback(
     (text: string) => {
@@ -118,19 +249,52 @@ export default function Index() {
 
   // 自动保存功能
   useEffect(() => {
-    if (inputText.trim().length > 0 && isEditing) {
+    if (inputText.trim().length > 0 && isEditing && user?.id) {
       // 延迟保存，避免频繁触发
-      const timeoutId = setTimeout(() => {
-        setIsEditing(false);
+      const timeoutId = setTimeout(async () => {
+        try {
+          // 显示保存中状态
+          setSaveStatus("saving");
 
-        // 保存完成：切换为“已保存”对钩
-        setShowSaveIndicator(true);
-        setSaveStatus("saved");
-        saveIndicatorOpacity.value = withTiming(1, { duration: 300 });
-        saveIndicatorScale.value = withTiming(1, { duration: 300 });
+          // 调用API保存今天的笔记
+          const userId = parseInt(user.id);
+          if (isNaN(userId)) {
+            setSaveStatus("idle");
+            console.error("用户ID无效，无法保存笔记");
+            return;
+          }
 
-        // 可以在这里添加实际的保存逻辑，比如保存到本地存储或发送到服务器
-        console.log("自动保存:", inputText.trim());
+          const response = await apiService.saveTodayNote({
+            userId,
+            note: inputText.trim(),
+          });
+
+          if (response.success) {
+            // 保存完成：切换为"已保存"对钩
+            setIsEditing(false);
+            setShowSaveIndicator(true);
+            setSaveStatus("saved");
+            saveIndicatorOpacity.value = withTiming(1, { duration: 300 });
+            saveIndicatorScale.value = withTiming(1, { duration: 300 });
+
+            console.log("自动保存今日笔记成功:", response.data);
+          } else {
+            // 保存失败 - 增强错误处理
+            setSaveStatus("idle");
+            console.error("自动保存今日笔记失败:", response.error);
+
+            // 如果是ID格式错误，提示用户重新登录
+            if (
+              response.error?.includes("ID格式无效") ||
+              response.error?.includes("ID或用户ID格式无效")
+            ) {
+              Alert.alert("保存失败", "用户数据异常，请重新登录");
+            }
+          }
+        } catch (error) {
+          setSaveStatus("idle");
+          console.error("自动保存异常:", error);
+        }
       }, 1000); // 1秒后自动保存
 
       return () => clearTimeout(timeoutId);
@@ -142,7 +306,13 @@ export default function Index() {
       saveIndicatorOpacity.value = withTiming(0, { duration: 200 });
       saveIndicatorScale.value = withTiming(0.8, { duration: 200 });
     }
-  }, [inputText, isEditing, saveIndicatorOpacity, saveIndicatorScale]);
+  }, [
+    inputText,
+    isEditing,
+    user?.id,
+    saveIndicatorOpacity,
+    saveIndicatorScale,
+  ]);
 
   // 圆形按钮动画样式（切至深色方案）
   const circleButtonStyle = useAnimatedStyle(() => {
@@ -308,7 +478,11 @@ export default function Index() {
                 className="min-h-[280px] rounded-xl bg-background-50"
               >
                 <TextareaInput
-                  placeholder="记录今天的一个句子、灵感或所思所想…"
+                  placeholder={
+                    isLoadingTodayNote
+                      ? "加载今日笔记中..."
+                      : "记录今天的一个句子、灵感或所思所想…"
+                  }
                   value={inputText}
                   onChangeText={handleTextChange}
                   maxLength={1000}
@@ -318,6 +492,7 @@ export default function Index() {
                   blurOnSubmit={false}
                   returnKeyType="default"
                   keyboardType="default"
+                  editable={!isLoadingTodayNote}
                   // 去除不支持的滚动回调，保持极简
                 />
               </Textarea>

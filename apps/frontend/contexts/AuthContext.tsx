@@ -35,8 +35,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userData = await AsyncStorage.getItem("userData");
 
       if (userToken && userData) {
-        setIsAuthenticated(true);
-        setUser(JSON.parse(userData));
+        const parsedUser = JSON.parse(userData);
+        console.log("恢复的用户数据:", parsedUser);
+
+        // 验证用户数据的有效性
+        if (parsedUser && parsedUser.id && !isNaN(parseInt(parsedUser.id))) {
+          setIsAuthenticated(true);
+          setUser(parsedUser);
+        } else {
+          console.error("用户数据无效，清除本地存储");
+          await AsyncStorage.removeItem("userToken");
+          await AsyncStorage.removeItem("userData");
+        }
       }
     } catch (error) {
       console.error("检查认证状态失败:", error);
@@ -55,6 +65,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.success && response.data) {
         const { token, user: userData } = response.data;
+        console.log("登录成功，接收到的用户数据:", userData);
+
+        // 验证用户数据的完整性
+        if (!userData || !userData.id || isNaN(parseInt(userData.id))) {
+          console.error("后端返回的用户数据无效:", userData);
+          return false;
+        }
 
         // 保存到本地存储
         await AsyncStorage.setItem("userToken", token);

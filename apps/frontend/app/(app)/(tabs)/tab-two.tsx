@@ -4,56 +4,103 @@ import NoteCard, { NoteItem } from "@/components/HorizontalNoteCard";
 import { Button, ButtonText } from "@/components/ui/button";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
+import { View } from "@/components/ui/view";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiService } from "@/services/api";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import React, { useMemo } from "react";
-import { View, useWindowDimensions } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useEffect, useState } from "react";
+import { useWindowDimensions } from "react-native";
 
 export default function TabTwoScreen() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const tabBarHeight = useBottomTabBarHeight();
   const { width: screenWidth } = useWindowDimensions();
+
+  const [historyData, setHistoryData] = useState<NoteItem[]>([]);
+  const [punchRecords, setPunchRecords] = useState<
+    Array<{ punchTime: string | Date }>
+  >([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const listPadding = 24; // 与页面 px-6 节奏对齐
   const edgePeek = 8; // 露出的预览宽度
   const cardWidth = screenWidth - listPadding * 2 - edgePeek; // 保持 8px 预览
   const cardHeight = 280; // 固定更高的卡片高度
 
-  const historyData: NoteItem[] = useMemo(() => {
-    const today = new Date();
-    const items: NoteItem[] = [];
-    const excerpts = [
-      {
-        text: "Today I learned a concise sentence about minimalism. Less is more - this principle guides not only design but also how we approach life itself.Today I learned a concise sentence about minimalism. Less is more - this principle guides not only design but also how we approach life itself.Today I learned a concise sentence about minimalism. Less is more - this principle guides not only design but also how we approach life itself.",
-      },
-      {
-        text: "记录：把复杂留给自己，把简单留给用户。设计的本质是为他人着想，而不是展示自己的技巧。",
-      },
-      {
-        text: "Reflection on today's reading: The power of small, consistent actions compound over time into extraordinary results.",
-      },
-      {
-        text: "今日思考：专注当下，不被过去束缚，不为未来焦虑。每一个当下都是重新开始的机会。",
-      },
-      {
-        text: "Discovered an interesting perspective: Constraints often lead to creativity. When we have fewer options, we become more innovative.",
-      },
-      {
-        text: "学习心得：真正的成长来自于走出舒适区。不断挑战自己，才能发现更广阔的世界。",
-      },
-    ];
-
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const excerpt = excerpts[i % excerpts.length];
-      items.push({
-        date: d,
-        excerpt: excerpt.text,
-      });
+  // 获取用户数据的函数
+  const fetchUserData = useCallback(async () => {
+    if (!user?.id) {
+      console.log("用户ID不存在，跳过获取用户数据");
+      return;
     }
-    return items;
-  }, []);
+
+    // 验证用户ID格式
+    const userIdNum = parseInt(user.id);
+    if (isNaN(userIdNum)) {
+      console.error("用户ID格式无效:", user.id);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      console.log("开始获取用户数据，用户ID:", user.id);
+      // 并行获取笔记列表和打卡记录
+      const [notesResponse, punchResponse] = await Promise.all([
+        apiService.getNotesByUser(user.id),
+        apiService.getPunchRecordsByUser(user.id),
+      ]);
+
+      // 处理笔记数据
+      if (notesResponse.success && notesResponse.data) {
+        const notes: NoteItem[] = notesResponse.data.map((note: any) => ({
+          id: note.id,
+          date: new Date(note.createTime),
+          excerpt: note.note,
+        }));
+        setHistoryData(notes);
+        console.log("成功获取历史笔记数据，数量:", notes.length);
+      } else {
+        // 对于新用户，没有历史数据是正常情况，不需要显示错误
+        console.log("暂无历史笔记数据，响应:", notesResponse);
+        setHistoryData([]);
+      }
+
+      // 处理打卡记录数据
+      if (punchResponse.success && punchResponse.data) {
+        setPunchRecords(punchResponse.data);
+        console.log("成功获取打卡记录数据，数量:", punchResponse.data.length);
+      } else {
+        // 对于新用户，没有打卡记录是正常情况
+        console.log("暂无打卡记录，响应:", punchResponse);
+        setPunchRecords([]);
+      }
+    } catch (error) {
+      console.error("获取用户数据异常，用户ID:", user.id, "错误:", error);
+      setHistoryData([]);
+      setPunchRecords([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id]);
+
+  // 获取用户数据（笔记列表和打卡记录）
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserData();
+    }
+  }, [user?.id, fetchUserData]);
+
+  // Tab获得焦点时刷新数据
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        console.log("Tab获得焦点，刷新用户数据");
+        fetchUserData();
+      }
+    }, [user?.id, fetchUserData])
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -64,7 +111,11 @@ export default function TabTwoScreen() {
       {/* 绿墙部分 */}
       <View className="px-6 pt-20">
         <View className="mx-auto w-full max-w-md">
-          <GrowthWall weeks={20} />
+          <GrowthWall
+            weeks={20}
+            punchRecords={punchRecords}
+            isLoading={isLoading}
+          />
         </View>
       </View>
 
@@ -76,11 +127,17 @@ export default function TabTwoScreen() {
               最近记录
             </Text>
             <Text className="text-xs text-typography-400">
-              {historyData.length} 条记录
+              {isLoading ? "加载中..." : `${historyData.length} 条记录`}
             </Text>
           </HStack>
 
-          {historyData.length === 0 ? (
+          {isLoading ? (
+            <View className="p-6 w-full rounded-2xl border border-background-300 bg-background-50">
+              <Text className="text-sm text-center text-typography-400">
+                加载中...
+              </Text>
+            </View>
+          ) : historyData.length === 0 ? (
             <View className="p-6 w-full rounded-2xl border border-background-300 bg-background-50">
               <Text className="text-sm text-center text-typography-400">
                 暂无记录

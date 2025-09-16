@@ -1,26 +1,10 @@
 import { Text } from "@/components/ui/text";
+import { View } from "@/components/ui/view";
 import { VStack } from "@/components/ui/vstack";
 import React, { useMemo } from "react";
 import Svg, { Rect, Text as SvgText } from "react-native-svg";
 
 type HeatmapValue = { date: string; count: number };
-
-function generateHeatmapData(weeks: number): HeatmapValue[] {
-  const days = weeks * 7;
-  const today = new Date();
-  const data: HeatmapValue[] = [];
-  for (let i = 0; i < days; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (days - 1 - i));
-    const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-    const seed = Math.abs(
-      key.split("").reduce((a, c) => (a * 33 + c.charCodeAt(0)) % 997, 7)
-    );
-    const count = seed % 5; // 0..4 强度
-    data.push({ date: key, count });
-  }
-  return data;
-}
 
 function Heatmap({
   values,
@@ -139,8 +123,79 @@ function Heatmap({
   );
 }
 
-export function GrowthWall({ weeks = 20 }: { weeks?: number }) {
-  const values = useMemo(() => generateHeatmapData(weeks), [weeks]);
+export function GrowthWall({
+  weeks = 20,
+  punchRecords = [],
+  isLoading = false,
+}: {
+  weeks?: number;
+  punchRecords?: Array<{ punchTime: string | Date }>;
+  isLoading?: boolean;
+}) {
+  const values = useMemo(() => {
+    // 如果正在加载，返回空数组（不显示任何内容）
+    if (isLoading) {
+      return [];
+    }
+
+    // 如果没有打卡记录，返回全为0的数据（而不是模拟数据）
+    if (punchRecords.length === 0) {
+      const days = weeks * 7;
+      const today = new Date();
+      const data: HeatmapValue[] = [];
+      for (let i = 0; i < days; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - (days - 1 - i));
+        const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+        data.push({ date: key, count: 0 }); // 全为0，表示没有打卡
+      }
+      return data;
+    }
+
+    // 将打卡记录转换为热力图数据
+    const days = weeks * 7;
+    const today = new Date();
+    const data: HeatmapValue[] = [];
+
+    // 创建日期到打卡次数的映射
+    const punchMap = new Map<string, number>();
+
+    punchRecords.forEach((record) => {
+      const date = new Date(record.punchTime);
+      const key = `${date.getFullYear()}-${
+        date.getMonth() + 1
+      }-${date.getDate()}`;
+      punchMap.set(key, (punchMap.get(key) || 0) + 1);
+    });
+
+    // 生成指定周数的数据
+    for (let i = 0; i < days; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (days - 1 - i));
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+      const count = punchMap.get(key) || 0;
+      // 将打卡次数映射到0-4的强度值
+      const intensity = count > 0 ? Math.min(count, 4) : 0;
+      data.push({ date: key, count: intensity });
+    }
+
+    return data;
+  }, [weeks, punchRecords, isLoading]);
+
+  // 如果正在加载，显示加载状态
+  if (isLoading) {
+    return (
+      <VStack space="lg" className="items-center w-full">
+        <Text className="text-sm text-typography-400">
+          成长绿墙 · {weeks} 周
+        </Text>
+        <View className="h-24 justify-center">
+          <Text className="text-xs text-typography-300">加载中...</Text>
+        </View>
+      </VStack>
+    );
+  }
+
   return (
     <VStack space="lg" className="items-center w-full">
       <Text className="text-sm text-typography-400">成长绿墙 · {weeks} 周</Text>

@@ -5,6 +5,7 @@ import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { databaseConfig } from "./config/database.config";
 import { LoggerMiddleware } from "./logger.middleware";
+import { NoteModule } from "./note/note.module";
 import { PunchRecordModule } from "./punch-record/punch-record.module";
 import { UserModule } from "./user/user.module";
 
@@ -17,12 +18,13 @@ import { UserModule } from "./user/user.module";
     UserModule,
     TypeOrmModule.forRoot(databaseConfig),
     PunchRecordModule,
+    NoteModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(LoggerMiddleware).forRoutes("user", "punch-record");
+    consumer.apply(LoggerMiddleware).forRoutes("user", "punch-record", "note");
   }
 }

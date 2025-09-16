@@ -47,7 +47,7 @@ export class PunchRecordController {
       throw new HttpException(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
         error.message || "打卡失败", // 错误信息，如果没有具体信息则使用默认信息
-        HttpStatus.BAD_REQUEST, // HTTP状态码400
+        HttpStatus.BAD_REQUEST // HTTP状态码400
       );
     }
   }
@@ -67,13 +67,19 @@ export class PunchRecordController {
        * +userId: 将字符串转换为数字（一元加号操作符）
        * 因为URL参数总是字符串，但我们的服务需要数字类型
        */
-      return await this.punchRecordService.findByUserId(+userId);
+      const userIdNum = +userId;
+
+      if (isNaN(userIdNum)) {
+        throw new Error("用户ID格式无效");
+      }
+
+      return await this.punchRecordService.findByUserId(userIdNum);
     } catch (error) {
       // 错误处理，同上
       throw new HttpException(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
         error.message || "获取打卡记录失败",
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
   }
