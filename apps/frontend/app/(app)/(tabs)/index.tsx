@@ -7,7 +7,13 @@ import { getRandomQuote } from "@/constants/quotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/services/api";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Alert,
   Keyboard,
@@ -15,6 +21,7 @@ import {
   Pressable,
   TouchableWithoutFeedback,
 } from "react-native";
+import ConfettiCannon from "react-native-confetti-cannon";
 import Animated, {
   Easing,
   interpolate,
@@ -44,6 +51,9 @@ export default function Index() {
   const [isLoadingTodayNote, setIsLoadingTodayNote] = useState(false); // 加载今日笔记状态
   // const [isFocused, setIsFocused] = useState(false); // 是否已聚焦
 
+  // 烟花效果 ref
+  const confettiRef = useRef<any>(null);
+
   // 句库（常量），随机展示
   const quote = useMemo(() => getRandomQuote(), []);
 
@@ -59,14 +69,14 @@ export default function Index() {
 
   // 按钮按下动画
   const handlePressIn = useCallback(() => {
-    scale.value = withTiming(0.98, { duration: 60, easing: Easing.linear });
+    scale.value = withTiming(0.92, { duration: 80, easing: Easing.linear });
   }, [scale]);
 
   // 按钮释放动画
   const handlePressOut = useCallback(() => {
     scale.value = withSpring(1, {
-      damping: 12,
-      stiffness: 200,
+      damping: 10,
+      stiffness: 300,
     });
   }, [scale]);
 
@@ -86,6 +96,13 @@ export default function Index() {
 
     setIsPunching(true);
 
+    // 异步触发烟花效果，避免与按钮动画冲突
+    setTimeout(() => {
+      if (confettiRef.current) {
+        confettiRef.current.start();
+      }
+    }, 100); // 延迟100ms，让按钮动画先执行
+
     try {
       // 调用后端打卡接口
       const userId = parseInt(user.id);
@@ -99,22 +116,22 @@ export default function Index() {
       });
 
       if (response.success) {
-        // API调用成功，执行动画
-        scale.value = withSequence(
-          withSpring(1.1, { damping: 10, stiffness: 300 }),
-          withSpring(1, { damping: 15, stiffness: 200 })
-        );
+        // 异步执行成功动画，避免阻塞
+        /* requestAnimationFrame(() => {
+          // API调用成功，执行动画
+          scale.value = withSequence(
+            withSpring(1.1, { damping: 10, stiffness: 300 }),
+            withSpring(1, { damping: 15, stiffness: 200 })
+          );
 
-        colorProgress.value = withTiming(1, {
-          duration: 400,
-          easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
-        });
+          colorProgress.value = withTiming(1, {
+            duration: 400,
+            easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+          });
+        }); */
 
         // 更新状态为已打卡
         runOnJS(setIsCheckedIn)(true);
-
-        // 显示成功提示
-        Alert.alert("成功", response.data?.message || "打卡成功！");
       } else {
         // API调用失败
         Alert.alert("打卡失败", response.error || "请稍后重试");
@@ -143,6 +160,35 @@ export default function Index() {
       false
     );
   }, [breath]);
+
+  // 检查今日打卡状态的函数
+  const checkTodayPunchStatus = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const response = await apiService.getPunchRecordsByUser(user.id);
+      if (response.success && response.data) {
+        // 检查今天是否已经打卡
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const todayRecord = response.data.find((record: any) => {
+          const punchTime = new Date(record.punchTime);
+          return punchTime >= today && punchTime < tomorrow;
+        });
+
+        if (todayRecord) {
+          setIsCheckedIn(true);
+          // 设置按钮颜色为已打卡状态
+          colorProgress.value = 1;
+        }
+      }
+    } catch (error) {
+      console.error("检查打卡状态失败:", error);
+    }
+  }, [user?.id, colorProgress]);
 
   // 检查今日打卡状态
   useEffect(() => {
@@ -188,44 +234,37 @@ export default function Index() {
     }
   }, [user?.id]);
 
-  // 检查今日打卡状态的函数
-  const checkTodayPunchStatus = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      const response = await apiService.getPunchRecordsByUser(user.id);
-      if (response.success && response.data) {
-        // 检查今天是否已经打卡
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const todayRecord = response.data.find((record: any) => {
-          const punchTime = new Date(record.punchTime);
-          return punchTime >= today && punchTime < tomorrow;
-        });
-
-        if (todayRecord) {
-          setIsCheckedIn(true);
-          // 设置按钮颜色为已打卡状态
-          colorProgress.value = 1;
-        }
-      }
-    } catch (error) {
-      console.error("检查打卡状态失败:", error);
-    }
-  }, [user?.id, colorProgress]);
-
   // 获取今日笔记并回显
   useEffect(() => {
     loadTodayNote();
   }, [loadTodayNote]);
 
+  // 监听用户变化，自动刷新数据
+  useEffect(() => {
+    if (user?.id) {
+      console.log("用户变化，刷新Home页面数据，用户ID:", user.id);
+      loadTodayNote();
+      checkTodayPunchStatus();
+    } else {
+      // 用户登出时清空所有数据和状态
+      console.log("用户登出，清空Home页面数据");
+      setInputText("");
+      setIsCheckedIn(false);
+      setIsPunching(false);
+      setIsEditing(false);
+      setShowSaveIndicator(false);
+      setSaveStatus("idle");
+      colorProgress.value = 0;
+      saveIndicatorOpacity.value = 0;
+      saveIndicatorScale.value = 0.8;
+    }
+  }, [user?.id, loadTodayNote, checkTodayPunchStatus, colorProgress]);
+
   // Tab获得焦点时刷新数据
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
+        console.log("Home Tab获得焦点，刷新数据");
         loadTodayNote();
         checkTodayPunchStatus();
       }
@@ -400,6 +439,29 @@ export default function Index() {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View className="flex-1 bg-background-0">
+        {/* 烟花效果组件 - 设置最高层级，从按钮中心发射 */}
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            pointerEvents: "none",
+          }}
+        >
+          <ConfettiCannon
+            ref={confettiRef}
+            count={100}
+            origin={{ x: 0, y: 0 }}
+            autoStart={false}
+            explosionSpeed={200}
+            fallSpeed={2400}
+            fadeOut={true}
+            colors={["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1"]}
+          />
+        </View>
         <Animated.View
           style={containerStyle}
           className="flex-1 justify-center px-6"
@@ -415,7 +477,7 @@ export default function Index() {
             className="items-center"
           >
             <Text
-              className="text-sm italic text-center opacity-80 text-typography-400"
+              className="text-base italic text-center opacity-80 text-typography-400"
               numberOfLines={2}
             >
               “{quote.text}” — {quote.author}
